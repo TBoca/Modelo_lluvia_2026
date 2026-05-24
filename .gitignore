@@ -16,9 +16,12 @@ venv/
 .quarto/
 *_files/
 *.html
+informes/*_files/
+informes/*.html
 
 # Data files excluded from repository
 datos_ndvi_modis_16dias_todas_localidades.csv
+datos/datos_ndvi_modis_16dias_todas_localidades.csv
 
 # Office temp files
 ~$*.docx

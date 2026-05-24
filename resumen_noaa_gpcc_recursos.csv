@@ -1,8 +1,0 @@
-﻿fuente,dataset,url,resolucion,periodo,variables
-NOAA PSL,NCEP/NCAR Reanalysis,https://psl.noaa.gov/data/gridded/data.ncep.reanalysis.html,2.5° x 2.5°,1948-presente,"Temperatura, presión, viento, humedad"
-NOAA PSL,CPC Global Unified Precipitation,https://psl.noaa.gov/data/gridded/data.cpc.globalprecip.html,0.5° x 0.5°,1979-presente,Precipitación
-NOAA PSL,GPCP Precipitation,https://psl.noaa.gov/data/gridded/data.gpcp.html,2.5° x 2.5°,1979-presente,Precipitación combinada sat/estaciones
-GPCC,full_data_monthly_v2022_025,https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/025/full_data_monthly_v2022_025.nc.gz,025,Mensual,Precipitación
-GPCC,full_data_monthly_v2022_05,https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/05/full_data_monthly_v2022_05.nc.gz,05,Mensual,Precipitación
-GPCC,full_data_monthly_v2022_10,https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/10/full_data_monthly_v2022_10.nc.gz,10,Mensual,Precipitación
-GPCC,full_data_monthly_v2022_25,https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/25/full_data_monthly_v2022_25.nc.gz,25,Mensual,Precipitación

@@ -1,0 +1,296 @@
+---
+title: "Precipitación Global Unificada"
+format: html
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Objetivo
+
+Unificar 4 bases mensuales de precipitación (NOAA, CHIRPS, GPCC y NASA) en un solo data frame,
+con columnas separadas por fuente y metadatos adicionales disponibles.
+
+## Librerías
+
+```{r}
+library(readr)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(purrr)
+```
+
+## Carga y normalización
+
+```{r}
+fix_coord <- function(x, max_abs) {
+    # Corrige coordenadas en formato raro, por ejemplo "-378.930.802".
+    if (is.na(x)) return(NA_real_)
+
+    txt <- as.character(x)
+    txt <- str_trim(txt)
+    txt <- str_replace_all(txt, ",", ".")
+
+    if (str_count(txt, fixed(".")) > 1) {
+        sign <- ifelse(str_starts(txt, "-"), -1, 1)
+        digits <- str_replace_all(txt, "[^0-9]", "")
+        if (digits == "") return(NA_real_)
+        val <- sign * as.numeric(digits)
+    } else {
+        val <- suppressWarnings(as.numeric(txt))
+    }
+
+    while (!is.na(val) && abs(val) > max_abs) {
+        val <- val / 10
+    }
+
+    val
+}
+
+normalize_keys <- function(df) {
+    df %>%
+        mutate(
+            Fecha = as.Date(Fecha),
+            Latitud = round(as.numeric(Latitud), 6),
+            Longitud = round(as.numeric(Longitud), 6),
+            DPTO = str_trim(as.character(DPTO)),
+            LOC = str_trim(as.character(LOC))
+        )
+}
+
+keys <- c("Fecha", "Latitud", "Longitud", "DPTO", "LOC")
+
+# CHIRPS
+chirps <- read_csv("../datos/datos_chirps_mensuales_todas_localidades.csv", show_col_types = FALSE) %>%
+    rename(P_CHIRPS_mm_mes = Precipitacion) %>%
+    normalize_keys() %>%
+    select(all_of(keys), P_CHIRPS_mm_mes)
+
+# NOAA
+noaa <- read_csv("../datos/datos_noaa_psl_mensuales_todas_localidades.csv", show_col_types = FALSE) %>%
+    rename(
+        Latitud = Latitud_solicitada,
+        Longitud = Longitud_solicitada,
+        P_NOAA_mm_mes = Precipitacion_mm_mes,
+        P_NOAA_mm_dia = precip_mm_dia
+    ) %>%
+    normalize_keys() %>%
+    select(all_of(keys), P_NOAA_mm_mes, P_NOAA_mm_dia)
+
+# GPCC
+gpcc <- read_csv("../datos/datos_gpcc_mensuales_todas_localidades.csv", show_col_types = FALSE) %>%
+    rename(
+        Latitud = Latitud_solicitada,
+        Longitud = Longitud_solicitada,
+        P_GPCC_mm_mes = Precipitacion_mm_mes
+    ) %>%
+    normalize_keys() %>%
+    select(all_of(keys), P_GPCC_mm_mes)
+
+# NASA (separador ';' y coordenadas en formato especial)
+nasa <- read_delim(
+    "../datos/datos_nasa_mensuales_todas_localidades.csv",
+    delim = ";",
+    show_col_types = FALSE
+) %>%
+    mutate(
+        Fecha = dmy(Fecha),
+        Latitud = map_dbl(Latitud, ~fix_coord(.x, 90)),
+        Longitud = map_dbl(Longitud, ~fix_coord(.x, 180)),
+        P_NASA_mm_dia = as.numeric(PRECTOTCORR),
+        P_NASA_mm_mes = P_NASA_mm_dia * days_in_month(Fecha),
+        RH2M = as.numeric(RH2M),
+        T2M = as.numeric(T2M),
+        T2M_MAX = as.numeric(T2M_MAX),
+        T2M_MIN = as.numeric(T2M_MIN)
+    ) %>%
+    normalize_keys() %>%
+    select(all_of(keys), P_NASA_mm_mes, P_NASA_mm_dia, RH2M, T2M, T2M_MAX, T2M_MIN)
+
+cat("Filas CHIRPS:", nrow(chirps), "\n")
+cat("Filas NOAA  :", nrow(noaa), "\n")
+cat("Filas GPCC  :", nrow(gpcc), "\n")
+cat("Filas NASA  :", nrow(nasa), "\n")
+```
+
+## Unión de las 4 fuentes
+
+```{r}
+precipitacion_global <- chirps %>%
+    full_join(noaa, by = keys) %>%
+    full_join(gpcc, by = keys) %>%
+    full_join(nasa, by = keys) %>%
+    arrange(Fecha, Latitud, Longitud)
+
+glimpse(precipitacion_global)
+```
+
+## NDVI MODIS mensual
+
+```{r}
+ndvi <- read_csv("../datos/datos_ndvi_modis_mensual_todas_localidades.csv", show_col_types = FALSE) %>%
+    rename(Latitud = lat, Longitud = long) %>%
+    mutate(
+        Fecha    = as.Date(Fecha),
+        Latitud  = round(as.numeric(Latitud), 6),
+        Longitud = round(as.numeric(Longitud), 6),
+        DPTO     = str_trim(as.character(DPTO)),
+        LOC      = str_trim(as.character(LOC))
+    ) %>%
+    select(Fecha, Latitud, Longitud, DPTO, LOC, NDVI_mensual)
+
+cat("Filas NDVI:", nrow(ndvi), "\n")
+
+precipitacion_global <- precipitacion_global %>%
+    left_join(ndvi, by = keys)
+
+cat("Filas después de unir NDVI:", nrow(precipitacion_global), "\n")
+```
+
+## Índices climáticos globales (CPC + MEI)
+
+```{r}
+indices_climaticos <- read_csv("../datos/datos_indices_climaticos_mensuales.csv", show_col_types = FALSE) %>%
+    mutate(Fecha = as.Date(Fecha))
+
+cat("Filas índices climáticos:", nrow(indices_climaticos), "\n")
+
+precipitacion_global <- precipitacion_global %>%
+    left_join(indices_climaticos, by = "Fecha")
+
+cat("Filas después de unir índices climáticos:", nrow(precipitacion_global), "\n")
+```
+
+## Rendimientos MAGYP por localidad
+
+```{r}
+# La columna campana tiene formato "YYYY/YY"; el año de cosecha es el segundo año.
+rendimientos_largo <- read_csv("../datos/rendimientos_magyp_por_loc.csv", show_col_types = FALSE) %>%
+    mutate(
+        DPTO = str_trim(as.character(DPTO)),
+        LOC = str_trim(as.character(LOC)),
+        cultivo = str_trim(as.character(cultivo)),
+        cultivo_col = cultivo %>%
+            str_to_lower() %>%
+            str_replace_all("[^a-z0-9]+", "_") %>%
+            str_replace_all("^_|_$", ""),
+        # Extraer el año de cosecha: p. ej. "2020/21" → 2021; "2020/2021" → 2021
+        anio_cosecha = as.integer(
+            str_replace(campana, ".*/0?(\\d{2,4})$", "\\1") %>%
+            {ifelse(nchar(.) == 2, paste0("20", .), .)}
+        )
+    ) %>%
+    select(DPTO, LOC, cultivo, cultivo_col, campana, anio_cosecha,
+        sup_sembrada_ha, sup_cosechada_ha, produccion_tn, rendimiento_kg_ha)
+
+rendimientos_por_cultivo <- rendimientos_largo %>%
+    group_by(DPTO, LOC, anio_cosecha, cultivo_col) %>%
+    summarise(
+        n_registros = n(),
+        sup_sembrada_ha = sum(sup_sembrada_ha, na.rm = TRUE),
+        sup_cosechada_ha = sum(sup_cosechada_ha, na.rm = TRUE),
+        produccion_tn = sum(produccion_tn, na.rm = TRUE),
+        rendimiento_kg_ha = mean(rendimiento_kg_ha, na.rm = TRUE),
+        rendimiento_min_kg_ha = suppressWarnings(min(rendimiento_kg_ha, na.rm = TRUE)),
+        rendimiento_max_kg_ha = suppressWarnings(max(rendimiento_kg_ha, na.rm = TRUE)),
+        rendimiento_sd_kg_ha = ifelse(sum(!is.na(rendimiento_kg_ha)) > 1,
+            sd(rendimiento_kg_ha, na.rm = TRUE), NA_real_),
+        .groups = "drop"
+    ) %>%
+    mutate(
+        across(c(sup_sembrada_ha, sup_cosechada_ha, produccion_tn, rendimiento_kg_ha,
+            rendimiento_min_kg_ha, rendimiento_max_kg_ha),
+            ~ifelse(is.nan(.x), NA_real_, .x))
+    ) %>%
+    pivot_wider(
+        names_from = cultivo_col,
+        values_from = c(
+            n_registros,
+            sup_sembrada_ha,
+            sup_cosechada_ha,
+            produccion_tn,
+            rendimiento_kg_ha,
+            rendimiento_min_kg_ha,
+            rendimiento_max_kg_ha,
+            rendimiento_sd_kg_ha
+        ),
+        names_sep = "_",
+        values_fill = NA_real_
+    )
+
+rendimientos_totales <- rendimientos_largo %>%
+    group_by(DPTO, LOC, anio_cosecha) %>%
+    summarise(
+        n_cultivos = n_distinct(cultivo_col),
+        n_registros_totales = n(),
+        sup_sembrada_total_ha = sum(sup_sembrada_ha, na.rm = TRUE),
+        sup_cosechada_total_ha = sum(sup_cosechada_ha, na.rm = TRUE),
+        produccion_total_tn = sum(produccion_tn, na.rm = TRUE),
+        rendimiento_promedio_kg_ha = mean(rendimiento_kg_ha, na.rm = TRUE),
+        rendimiento_mediana_kg_ha = median(rendimiento_kg_ha, na.rm = TRUE),
+        .groups = "drop"
+    ) %>%
+    mutate(
+        sup_sembrada_total_ha = ifelse(is.nan(sup_sembrada_total_ha), NA_real_, sup_sembrada_total_ha),
+        sup_cosechada_total_ha = ifelse(is.nan(sup_cosechada_total_ha), NA_real_, sup_cosechada_total_ha),
+        produccion_total_tn = ifelse(is.nan(produccion_total_tn), NA_real_, produccion_total_tn),
+        rendimiento_promedio_kg_ha = ifelse(is.nan(rendimiento_promedio_kg_ha), NA_real_, rendimiento_promedio_kg_ha),
+        rendimiento_mediana_kg_ha = ifelse(is.nan(rendimiento_mediana_kg_ha), NA_real_, rendimiento_mediana_kg_ha),
+        relacion_cosechada_sembrada = if_else(
+            !is.na(sup_sembrada_total_ha) & sup_sembrada_total_ha > 0,
+            sup_cosechada_total_ha / sup_sembrada_total_ha,
+            NA_real_
+        ),
+        productividad_total_kg_ha = if_else(
+            !is.na(sup_cosechada_total_ha) & sup_cosechada_total_ha > 0,
+            (produccion_total_tn * 1000) / sup_cosechada_total_ha,
+            NA_real_
+        )
+    )
+
+rendimientos <- rendimientos_por_cultivo %>%
+    full_join(rendimientos_totales, by = c("DPTO", "LOC", "anio_cosecha"))
+
+cat("Filas rendimientos:", nrow(rendimientos), "\n")
+glimpse(rendimientos)
+```
+
+```{r}
+# Unir rendimientos al dataset global usando año de la Fecha y DPTO/LOC.
+# Como los rendimientos son anuales (por campaña), se repiten para cada mes
+# del año de cosecha correspondiente. Los cultivos quedan en columnas separadas.
+precipitacion_global <- precipitacion_global %>%
+    mutate(anio_cosecha = year(Fecha)) %>%
+    left_join(rendimientos, by = c("DPTO", "LOC", "anio_cosecha"),
+        relationship = "many-to-one") %>%
+    select(-anio_cosecha)
+
+cat("Filas después de unir rendimientos:", nrow(precipitacion_global), "\n")
+glimpse(precipitacion_global)
+```
+
+## Cobertura por fuente
+
+```{r}
+cobertura <- tibble(
+    variable = c("P_CHIRPS_mm_mes", "P_NOAA_mm_mes", "P_GPCC_mm_mes", "P_NASA_mm_mes"),
+    no_nulos = c(
+        sum(!is.na(precipitacion_global$P_CHIRPS_mm_mes)),
+        sum(!is.na(precipitacion_global$P_NOAA_mm_mes)),
+        sum(!is.na(precipitacion_global$P_GPCC_mm_mes)),
+        sum(!is.na(precipitacion_global$P_NASA_mm_mes))
+    )
+)
+
+cobertura
+```
+
+## Data frame final
+
+```{r}
+summary(precipitacion_global)
+
+```

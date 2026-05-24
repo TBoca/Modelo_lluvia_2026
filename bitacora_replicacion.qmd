@@ -1,0 +1,179 @@
+---
+title: "Bitacora de Replicacion - Pipeline Climatico y Productivo"
+author: "Proyecto LLUVIA NUEVO 2026"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Objetivo de esta bitacora
+
+Documentar, en forma replicable, los pasos realizados para construir la base integrada de modelado (meteorologia + NDVI + rendimientos + indices climaticos globales), indicando:
+
+- datos obtenidos,
+- fuentes web oficiales,
+- scripts responsables,
+- archivos de salida,
+- cambios aplicados al flujo.
+
+## Estado actual (resumen)
+
+A la fecha se consolido una base mensual integrada en [precipitacion_global.qmd](precipitacion_global.qmd), incorporando:
+
+- Precipitacion mensual de CHIRPS, NOAA PSL-CMAP, GPCC y NASA POWER.
+- Variables meteorologicas NASA (RH2M, T2M, T2M_MAX, T2M_MIN).
+- NDVI mensual MODIS por localidad.
+- Rendimientos MAGYP por localidad, con columnas separadas por cultivo y agregados totales por localidad-anio.
+- Indices climaticos globales de CPC y MEI v2.
+
+Ademas, se elimino la seccion de Bubble Maps para dejar el script enfocado en armado de dataset para modelado.
+
+## Inventario de datos y fuentes
+
+### 1) Precipitacion CHIRPS
+
+- Script: [chirps_simple.py](chirps_simple.py)
+- Salida: [datos_chirps_mensuales_todas_localidades.csv](datos_chirps_mensuales_todas_localidades.csv)
+- Fuente web:
+  - https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs
+- Variable principal:
+  - `Precipitacion` (mm/mes)
+
+### 2) Precipitacion NOAA PSL (CMAP)
+
+- Script: [noaa_simple.py](noaa_simple.py)
+- Salida: [datos_noaa_psl_mensuales_todas_localidades.csv](datos_noaa_psl_mensuales_todas_localidades.csv)
+- Fuente web:
+  - https://psl.noaa.gov/thredds/dodsC/Datasets/cmap/enh/precip.mon.mean.nc
+- Variables principales:
+  - `Precipitacion_mm_mes`
+  - `precip_mm_dia`
+
+### 3) Precipitacion GPCC
+
+- Script: [gpcc_simple.py](gpcc_simple.py)
+- Salida: [datos_gpcc_mensuales_todas_localidades.csv](datos_gpcc_mensuales_todas_localidades.csv)
+- Fuente web:
+  - https://psl.noaa.gov/thredds/dodsC/Datasets/gpcc/combined/precip.comb.v2020to2019-v2020monitorafter.total.nc
+- Variable principal:
+  - `Precipitacion_mm_mes`
+
+### 4) NASA POWER mensual
+
+- Script: [nasa_simple.py](nasa_simple.py)
+- Salida: [datos_nasa_mensuales_todas_localidades.csv](datos_nasa_mensuales_todas_localidades.csv)
+- Fuente web:
+  - https://power.larc.nasa.gov/api/temporal/monthly/point
+- Variables principales:
+  - `PRECTOTCORR`, `RH2M`, `T2M`, `T2M_MAX`, `T2M_MIN`
+
+### 5) NDVI MODIS (16 dias y mensual)
+
+- Script: [ndvi_modis_localidades.py](ndvi_modis_localidades.py)
+- Salidas:
+  - [datos_ndvi_modis_16dias_todas_localidades.csv](datos_ndvi_modis_16dias_todas_localidades.csv)
+  - [datos_ndvi_modis_mensual_todas_localidades.csv](datos_ndvi_modis_mensual_todas_localidades.csv)
+- Fuente web:
+  - https://modis.ornl.gov/rst/api/v1
+- Producto:
+  - MOD13Q1 (`250m_16_days_NDVI`)
+
+### 6) Rendimientos agricolas MAGYP
+
+- Script: [rendimientos_magyp.py](rendimientos_magyp.py)
+- Salidas:
+  - [rendimientos_magyp_por_dpto.csv](rendimientos_magyp_por_dpto.csv)
+  - [rendimientos_magyp_por_loc.csv](rendimientos_magyp_por_loc.csv)
+- Fuente web:
+  - https://datosestimaciones.magyp.gob.ar/reportes.php?reporte=Estimaciones
+- Cultivos trabajados:
+  - Trigo total, Maiz, Girasol, Sorgo
+
+### 7) Indices climaticos globales (CPC + MEI)
+
+- Script: [mei_simple.py](mei_simple.py)
+- Salidas:
+  - [datos_indices_climaticos_mensuales_long.csv](datos_indices_climaticos_mensuales_long.csv)
+  - [datos_indices_climaticos_mensuales.csv](datos_indices_climaticos_mensuales.csv)
+  - [datos_mei_v2_mensuales.csv](datos_mei_v2_mensuales.csv) (generado en ejecucion previa)
+- Fuentes web:
+  - https://www.cpc.ncep.noaa.gov/data/indices/
+  - https://psl.noaa.gov/data/timeseries/month/MEIV2/
+  - https://psl.noaa.gov/data/correlation/meiv2.csv
+
+Indices incluidos en la version actual del script:
+
+- Viento/atmosfera: `zwnd200`, `wpac850`, `cpac850`, `epac850`, `qbo_u30`, `qbo_u50`, `olr_equatorial`, `z500t`.
+- Presion y oscilacion: `darwin_slp`, `tahiti_slp`, `soi`.
+- ENSO/SST: `nino12`, `nino3`, `nino4`, `nino34` (SST y anomalias), `oisst_*`, `rnino*`, `oni_*`, `roni_anom`, `nino34_3m_anom`.
+- MEI: `MEI_v2`.
+
+## Integracion en base final
+
+Script integrador principal: [precipitacion_global.qmd](precipitacion_global.qmd)
+
+Integraciones aplicadas:
+
+- Union completa de 4 fuentes de precipitacion por `Fecha + Latitud + Longitud + DPTO + LOC`.
+- Union de NDVI mensual por las mismas claves.
+- Union de indices climaticos globales por `Fecha`.
+- Transformacion de rendimientos a formato ancho por cultivo, mas agregados totales por localidad-anio.
+- Union de rendimientos por `DPTO + LOC + anio_cosecha`.
+
+## Registro de cambios realizados
+
+### 2026-05-24 - Version 1 de consolidacion
+
+- Se agrego NDVI mensual a la base integrada.
+- Se agregaron rendimientos MAGYP por localidad.
+- Se pasaron los cultivos a columnas separadas (sin problema si quedan NA).
+- Se ampliaron features de rendimientos para modelado:
+  - metricas por cultivo,
+  - metricas totales por localidad-anio.
+- Se elimino la seccion de Bubble Maps del integrador.
+- Se creo/extendio [mei_simple.py](mei_simple.py) para descargar indices CPC + MEI y exportar formato long/wide.
+- Se agrego al integrador la lectura de [datos_indices_climaticos_mensuales.csv](datos_indices_climaticos_mensuales.csv).
+
+## Flujo replicable recomendado
+
+### Paso 1: actualizar datasets base por fuente
+
+Ejecutar (segun necesidad) los scripts:
+
+- [chirps_simple.py](chirps_simple.py)
+- [noaa_simple.py](noaa_simple.py)
+- [gpcc_simple.py](gpcc_simple.py)
+- [nasa_simple.py](nasa_simple.py)
+- [ndvi_modis_localidades.py](ndvi_modis_localidades.py)
+- [rendimientos_magyp.py](rendimientos_magyp.py)
+- [mei_simple.py](mei_simple.py)
+
+### Paso 2: reconstruir dataset unificado
+
+Renderizar [precipitacion_global.qmd](precipitacion_global.qmd) para volver a generar el dataframe integrado con todas las uniones.
+
+### Paso 3: control basico de calidad
+
+Verificar:
+
+- Cobertura por fuente (`no_nulos` en bloque de cobertura).
+- Rango temporal final en la tabla unificada.
+- Proporcion de faltantes por variables nuevas (indices y rendimientos).
+
+## Plantilla para proximas actualizaciones
+
+Copiar este bloque al final cada vez que se agregue un cambio relevante:
+
+### AAAA-MM-DD - Titulo del cambio
+
+- Que se agrego o modifico.
+- Que archivo/script se toco.
+- Que nueva fuente se incorporo (URL).
+- Que salida se genero.
+- Impacto esperado en el dataset/modelo.

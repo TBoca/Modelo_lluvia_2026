@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# R / RStudio
+.Rhistory
+.Rproj.user/
+
+# Quarto build outputs
+.quarto/
+*_files/
+*.html
+
+# Office temp files
+~$*.docx
+~$*.xlsx
+~$*.xls
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/

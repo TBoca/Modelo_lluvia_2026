@@ -1,0 +1,261 @@
+---
+title: "Busqueda datos"
+author: "Teresa Boca"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# RESUMEN DE FUENTES DE DATOS CLIMÁTICOS E HIDROLÓGICOS
+
+## Región Pampeana - Argentina
+
+------------------------------------------------------------------------
+
+## 📊 TABLA COMPARATIVA
+
+| Fuente | Variables | Acceso | Autenticación | Formato | Complejidad | Velocidad | Recomendación |
+|---------|---------|---------|---------|---------|---------|---------|---------|
+| **NASA POWER** ✅ | 50+ agrometeorológicas | API REST puntual | No | JSON → DataFrame | Baja | Muy rápida | **MEJOR OPCIÓN** |
+| **CHIRPS** | Solo precipitación | Archivos GeoTIFF globales | No | GeoTIFF (\~80 MB/mes) | Alta | Muy lenta | No recomendado |
+| **GPCC** | Solo precipitación | Archivos NetCDF globales | No | NetCDF (\~2-5 GB) | Alta | Muy lenta | No recomendado |
+| **NOAA CDO** | Precipitación, temperatura, viento | API REST por estación | Sí (token gratuito) | JSON → DataFrame | Media | Media | Solo si necesitas estaciones específicas |
+| **NOAA PSL** | Múltiples variables | Archivos NetCDF grillados | No | NetCDF (GB) | Alta | Lenta | No recomendado |
+| **MERRA-2** | 100+ atmosféricas | Archivos NetCDF | Sí (NASA Earthdata) | NetCDF (GB) | Muy alta | Muy lenta | Solo investigación avanzada |
+| **ERA5** | 100+ variables | Copernicus CDS | Sí (registro CDS) | GRIB/NetCDF | Muy alta | Muy lenta | Solo investigación avanzada |
+| **INA/DPA (Napas)** | Niveles freáticos | Solicitud formal | No (pero requiere contacto) | Variable (Excel, PDF) | Alta | N/A | No disponible online |
+
+------------------------------------------------------------------------
+
+## 🔗 ENLACES DE TODOS LOS SITIOS
+
+### 1. NASA POWER 
+
+-   **Web**: <https://power.larc.nasa.gov/>
+-   **API Documentación**: <https://power.larc.nasa.gov/docs/>
+-   **API Endpoint**:
+    <https://power.larc.nasa.gov/api/temporal/monthly/point>
+-   **Datos disponibles**:
+    -   Precipitación (PRECTOTCORR)
+    -   Temperatura (T2M, T2M_MAX, T2M_MIN)
+    -   Humedad relativa (RH2M)
+    -   Viento (WS2M, WS10M)
+    -   Radiación solar (ALLSKY_SFC_SW_DWN)
+    -   Evapotranspiración (ET0)
+    -   Presión (PS)
+-   **Período**: 1981-presente (algunos datos desde 1984)
+-   **Resolución**: \~0.5° × 0.5° (\~55 km)
+-   **Frecuencia**: Diaria, mensual
+-   **Formato**: JSON (fácil conversión a DataFrame)
+-   **Estado**: ✅ Implementado en `nasa_simple.py`
+
+------------------------------------------------------------------------
+
+### 2. CHIRPS
+
+-   **Web principal**: <https://www.chc.ucsb.edu/data/chirps>
+-   **Portal de descarga**:
+    <https://data.chc.ucsb.edu/products/CHIRPS-2.0/>
+-   **Datos mensuales**:
+    <https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/>
+-   **Ejemplo URL**:
+    <https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/chirps-v2.0.2024.01.tif.gz>
+-   **Variables**: Solo precipitación
+-   **Período**: 1981-presente
+-   **Resolución**: 0.05° × 0.05° (\~5.5 km)
+-   **Formato**: GeoTIFF comprimido (\~80-100 MB por mes)
+-   **Problema**: Archivos globales, requiere descargar y procesar con
+    rasterio
+-   **Estado**: ❌ No recomendado (demasiado complejo para uso puntual)
+
+------------------------------------------------------------------------
+
+### 3. GPCC (Global Precipitation Climatology Centre)
+
+-   **Web**: <https://www.dwd.de/EN/ourservices/gpcc/gpcc.html>
+-   **Portal de descarga**:
+    <https://opendata.dwd.de/climate_environment/GPCC/>
+-   **Datos mensuales completos**:
+    <https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/>
+-   **Ejemplo URL (1.0°)**:
+    <https://opendata.dwd.de/climate_environment/GPCC/full_data_monthly_v2022/10/full_data_monthly_v2022_10.nc.gz>
+-   **Variables**: Solo precipitación
+-   **Período**: 1891-presente
+-   **Resoluciones**: 0.25°, 0.5°, 1.0°, 2.5°
+-   **Formato**: NetCDF comprimido (2-5 GB)
+-   **Problema**: Archivos globales enormes
+-   **Estado**: ❌ No recomendado (demasiado grande para uso puntual)
+
+------------------------------------------------------------------------
+
+### 4. NOAA NCDC CDO (Climate Data Online)
+
+-   **Web**: <https://www.ncdc.noaa.gov/cdo-web/>
+-   **Registro API token**: <https://www.ncdc.noaa.gov/cdo-web/token>
+-   **API Endpoint**: <https://www.ncei.noaa.gov/cdo-web/api/v2>
+-   **Documentación API**:
+    <https://www.ncdc.noaa.gov/cdo-web/webservices/v2>
+-   **Datasets**:
+    -   GHCND: Global Historical Climatology Network - Daily
+    -   GSOM: Global Summary of the Month
+-   **Variables**: Precipitación (PRCP), Temp max/min (TMAX, TMIN),
+    Viento (AWND)
+-   **Acceso**: Por estación meteorológica (no por coordenadas
+    arbitrarias)
+-   **Requiere**: Token gratuito (registrarse y recibirás por email)
+-   **Estado**: ⚠️ Útil si necesitas datos de estaciones específicas en
+    Argentina
+
+------------------------------------------------------------------------
+
+### 5. NOAA PSL (Physical Sciences Laboratory)
+
+-   **Web principal**: <https://psl.noaa.gov/>
+-   **Datos grillados**: <https://psl.noaa.gov/data/gridded/>
+-   **NCEP/NCAR Reanalysis**:
+    <https://psl.noaa.gov/data/gridded/data.ncep.reanalysis.html>
+-   **CPC Precipitation**:
+    <https://psl.noaa.gov/data/gridded/data.cpc.globalprecip.html>
+-   **THREDDS Server**: <https://psl.noaa.gov/thredds/>
+-   **Período**: 1948-presente (NCEP), 1979-presente (CPC)
+-   **Resolución**: 2.5° × 2.5° (NCEP), 0.5° × 0.5° (CPC)
+-   **Formato**: NetCDF (acceso via OPeNDAP o descarga)
+-   **Problema**: Archivos grandes, requiere xarray
+-   **Estado**: ❌ No recomendado para uso puntual
+
+------------------------------------------------------------------------
+
+### 6. MERRA-2 (NASA)
+
+-   **Web**: <https://gmao.gsfc.nasa.gov/reanalysis/MERRA-2/>
+-   **Portal de descarga**:
+    <https://disc.gsfc.nasa.gov/datasets?project=MERRA-2>
+-   **Registro requerido**: <https://urs.earthdata.nasa.gov/>
+-   **Variables**: 100+ (temperatura, viento, humedad, precipitación,
+    radiación, etc.)
+-   **Período**: 1980-presente
+-   **Resolución**: 0.5° × 0.625° (\~50 km)
+-   **Formato**: NetCDF4/HDF5
+-   **Requiere**: Cuenta NASA Earthdata (gratuita)
+-   **Problema**: Archivos por variable/día, muy complejo
+-   **Estado**: ❌ Solo para investigación avanzada
+
+------------------------------------------------------------------------
+
+### 7. ERA5 (Copernicus)
+
+-   **Web**:
+    <https://www.ecmwf.int/en/forecasts/datasets/reanalysis-datasets/era5>
+-   **Portal de descarga**: <https://cds.climate.copernicus.eu/>
+-   **Registro**: <https://cds.climate.copernicus.eu/user/register>
+-   **API**: Climate Data Store (CDS) API
+-   **Variables**: 100+ variables atmosféricas, terrestres y oceánicas
+-   **Período**: 1940-presente
+-   **Resolución**: 0.25° × 0.25° (\~31 km)
+-   **Formato**: GRIB/NetCDF
+-   **Requiere**: Cuenta Copernicus CDS (gratuita)
+-   **Problema**: Sistema de colas, descargas lentas
+-   **Estado**: ❌ Solo para investigación avanzada
+
+------------------------------------------------------------------------
+
+### 8. INA - Instituto Nacional del Agua (Argentina)
+
+-   **Web principal**: <https://www.ina.gob.ar/>
+-   **SNIH (Sistema Nacional de Información Hídrica)**:
+    <https://snih.hidricosargentina.gob.ar/>
+-   **Datos disponibles**:
+    -   Niveles de ríos y lagunas
+    -   Caudales
+    -   Precipitación de estaciones
+    -   Calidad de agua
+    -   Niveles freáticos (limitado)
+-   **Acceso datos freáticos**:
+    [subterraneas\@ina.gob.ar](mailto:subterraneas@ina.gob.ar){.email}
+-   **Base de Datos Hidrológica**:
+    [bdh\@ina.gob.ar](mailto:bdh@ina.gob.ar){.email}
+-   **Problema**: No hay API pública, descarga manual o solicitud formal
+-   **Estado**: ❌ Datos no disponibles para descarga automatizada
+
+------------------------------------------------------------------------
+
+### 9. DPA Buenos Aires
+
+-   **Web**: <http://www.dpaba.gba.gov.ar/>
+-   **Organismo**: Dirección Provincial de Recursos Hídricos - Buenos
+    Aires
+-   **Datos**: Freatímetros, red hidrométrica, precipitación provincial
+-   **Problema**: Datos no publicados sistemáticamente online
+-   **Estado**: ❌ Requiere solicitud formal
+
+------------------------------------------------------------------------
+
+### 10. SMN - Servicio Meteorológico Nacional (Argentina)
+
+-   **Web**: <https://www.smn.gob.ar/>
+-   **Datos en tiempo real**: <https://www.smn.gob.ar/descarga-de-datos>
+-   **Datos históricos**: Disponibles por solicitud
+-   **Estado**: ⚠️ Acceso limitado, principalmente datos actuales
+
+------------------------------------------------------------------------
+
+### 11. INTA - Instituto Nacional de Tecnología Agropecuaria
+
+-   **Web SIGA**: <https://siga.inta.gob.ar/>
+-   **Red agrometeorológica**: Estaciones en todo el país
+-   **Datos**: Temperatura, precipitación, humedad, viento (específico
+    para agricultura)
+-   **Estado**: ⚠️ Acceso por interfaz web, sin API pública
+
+------------------------------------------------------------------------
+
+### 12. TerraClimate
+
+-   **Web**: <https://www.climatologylab.org/terraclimate.html>
+-   **Descarga**:
+    <http://thredds.northwestknowledge.net:8080/thredds/catalog.html>
+-   **Variables**: 14 variables climáticas e hidrológicas
+-   **Período**: 1958-presente
+-   **Resolución**: \~4 km
+-   **Formato**: NetCDF
+-   **Estado**: ⚠️ Alternativa interesante, pero requiere procesamiento
+    NetCDF
+
+------------------------------------------------------------------------
+
+### 13. WorldClim
+
+-   **Web**: <https://www.worldclim.org/>
+-   **Descarga**: <https://www.worldclim.org/data/worldclim21.html>
+-   **Variables**: Temperatura, precipitación (climatologías)
+-   **Período**: Promedios 1970-2000
+-   **Resolución**: Hasta 30 segundos (\~1 km)
+-   **Formato**: GeoTIFF
+-   **Estado**: ⚠️ Solo climatologías (no series temporales)
+
+------------------------------------------------------------------------
+
+
+
+
+------------------------------------------------------------------------
+
+## 🎯 VARIABLES DISPONIBLES EN NASA POWER
+
+**Ya descargadas:** - PRECTOTCORR: Precipitación corregida (mm/mes) -
+T2M: Temperatura promedio (°C) - T2M_MAX: Temperatura máxima (°C) -
+T2M_MIN: Temperatura mínima (°C) - RH2M: Humedad relativa (%) - Latitud,
+Longitud, DPTO, LOC
+
+**Disponibles para agregar:** - WS2M: Velocidad del viento a 2m (m/s) -
+WS10M: Velocidad del viento a 10m (m/s) - ALLSKY_SFC_SW_DWN: Radiación
+solar descendente (MJ/m²/día) - ET0: Evapotranspiración de referencia
+FAO (mm/día) - PS: Presión atmosférica superficial (kPa) - T2MDEW:
+Temperatura del punto de rocío (°C) - WD2M: Dirección del viento a 2m
+(grados)
+
+------------------------------------------------------------------------
+

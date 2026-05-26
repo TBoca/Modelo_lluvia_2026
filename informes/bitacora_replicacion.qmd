@@ -2,10 +2,10 @@
 title: "Bitacora de Replicacion - Pipeline Climatico y Productivo"
 author: "Proyecto LLUVIA NUEVO 2026"
 format:
-  html:
+  docx:
     toc: true
     toc-depth: 3
-    number-sections: true
+    number-sections: false
 execute:
   echo: false
   warning: false

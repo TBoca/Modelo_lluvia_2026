@@ -32,3 +32,4 @@ datos/datos_ndvi_modis_16dias_todas_localidades.csv
 .DS_Store
 Thumbs.db
 .vscode/
+.positai

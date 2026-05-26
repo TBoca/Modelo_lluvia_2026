@@ -86,9 +86,3 @@ La bitacora del proceso se mantiene en:
 - `datos/rendimientos_magyp_por_loc.csv`: rendimientos por localidad.
 - `datos/datos_ndvi_modis_mensual_todas_localidades.csv`: NDVI mensual.
 - `informes/tablero_precipitacion_flexdashboard.Rmd`: tablero interactivo.
-
-## Notas
-
-- El archivo `datos/datos_ndvi_modis_16dias_todas_localidades.csv` no se versiona.
-- Los HTML renderizados y carpetas auxiliares de Quarto tampoco se versionan.
-- Las fuentes web y el detalle metodologico estan documentados en `informes/bitacora_replicacion.qmd`.
